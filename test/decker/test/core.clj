@@ -1,6 +1,9 @@
-(ns decker.test.core
-  (:use [decker.core])
-  (:use [clojure.test]))
 
-(deftest replace-me ;; FIXME: write
-  (is false "No tests have been written."))
+(ns decker.test.core
+  (:use decker.core
+        midje.sweet))
+
+(facts "about default database information"
+  (db-info {:user "another"}) => (contains {:type :mysql :host "localhost" :user "another" :pass ""})
+  (db-info {}) => (contains {:type :mysql :host "localhost" :user "root" :pass ""}))
+
