@@ -1,5 +1,5 @@
 
-(defproject decker "0.0.1"
+(defproject decker "0.0.2"
   :description "Easy database copying"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/java.jdbc "0.1.4"]
