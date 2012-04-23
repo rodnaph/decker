@@ -3,7 +3,7 @@
   (:use decker.core
         midje.sweet))
 
-(facts "about default database information"
-  (db-info {:user "another"}) => (contains {:type :mysql :host "localhost" :user "another" :pass ""})
-  (db-info {}) => (contains {:type :mysql :host "localhost" :user "root" :pass ""}))
+(facts "about getting connection information"
+  (make-connection {:type :mysql :host "localhost" :name "test" :user "root" :pass ""})
+    => (contains {:classname "com.mysql.jdbc.Driver"}))
 
