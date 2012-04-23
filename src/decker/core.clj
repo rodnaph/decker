@@ -3,6 +3,8 @@
   (:use [clojure.java.jdbc.internal :only [get-connection]])
   (:require [clojure.java.jdbc :as sql]))
 
+(def ^{:dynamic true} config)
+
 ;; This multi-method handles taking a map of connection information and
 ;; creating a JDBC connection map from it.
 
@@ -70,9 +72,13 @@
               The parameters are maps containing the connection information
               for each database."}
   copy [from to]
-  (let [db-from (db-info from)]
-    (doseq [table (tables db-from)]
-      (copy-table table db-from (db-info to)))))
+    (doseq [table (get-tables from)]
+      (println "Copying table:" table)
+      (copy-table from to table)))
 
-(defn -main [])
+(defn ^{:doc "To run the project just specify a configuration file with the
+              database information as detailed in config.clj-sample."}
+  -main [config-file]
+  (load-file config-file)
+  (copy (:from config) (:to config)))
 
