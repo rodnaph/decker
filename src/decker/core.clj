@@ -37,24 +37,41 @@
     :user user
     :pass pass }) 
 
+(def ^{:dynamic true :doc "This is the default page size used by *with-query-results-cursor* which
+  is explained next."} *default-fetch-size* 50)
+
+(defn ^{:doc "By default the clojure.java.jdbc *with-query-results* doesn't allow proper lazy evaluation because
+  the underlying ResultSet will extract all the data at once.  So this method uses a cursor to fetch
+  results a page at a time, but provide a lazy sequence interface."}
+  with-query-results-cursor [[sql & params :as sql-params] func]
+  (sql/transaction
+   (with-open [stmt (.prepareStatement (sql/connection) sql)]
+     (doseq [[index value] (map vector (iterate inc 1) params)]
+       (.setObject stmt index value))
+     (.setFetchSize stmt *default-fetch-size*)
+     (with-open [rset (.executeQuery stmt)]
+       (func (sql/resultset-seq rset))))))
+
 ;; We also need to take into account the different ways of querying for database meta information.
 ;; So here we use another multi-method to dispatch on the connection info type to get that.
 
-(defmulti get-tables :type)
+(defmulti ^{:doc "This function allows applying a function to the name of each table
+  in the specified database."}
+  with-tables :type)
 
-(defmethod get-tables :mysql
-  [info]
+(defmethod with-tables :mysql
+  [info f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      ["show tables"]
-      (doall (map #(second (first %)) rows)))))
+    (with-query-results-cursor ["show tables"]
+      #(doseq [table %]
+         (f (second (first table)))))))
 
-(defmethod get-tables :mssql
-  [info]
+(defmethod with-tables :mssql
+  [info f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      ["select * from INFORMATION_SCHEMA.TABLES "]
-      (doall (map #(:table_name %) rows)))))
+    (with-query-results-cursor ["select * from INFORMATION_SCHEMA.TABLES"]
+      #(doseq [{:keys [table_name]} %] 
+        (f table_name)))))
 
 ;; With database abstraction taken care of we can now handle the actual selection and copying
 ;; of data from the source to the destination.  Unfortunately the Clojure JDBC library only
@@ -62,30 +79,36 @@
 ;; re-inserting it into the destination.  That's a @todo - should really be handled with a
 ;; lazy sequence if possible.
 
-(defn ^{:doc "Returns all the rows from a specified table."}
-  rows-from [info table]
+(defn ^{:doc "Applies a function for each row in the specified table.  The function receives
+  each row in turn as it is fetched."}
+  with-rows [info table f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      [(str "select * from " table)]
-      (doall (map identity rows)))))
+    (with-query-results-cursor [(str "select * from " table)]
+      #(doseq [row %] (f row)))))
 
-(defn ^{:doc "Copies the contents of a table from one database to another.
-              This assumes the destination table is empty for now."}
+(defn ^{:doc "Copies the contents of a table from one database to another.  This assumes the 
+  destination table is empty for now.  The rows are copied lazily so large tables can be
+  handled - but performance could be improved."}
   copy-table [from to table]
-  (let [rows (rows-from from table)]
-    (sql/with-connection (make-connection to)
-      (apply (partial sql/insert-records (keyword table)) rows))))
+  (println "Copying table:" table)
+  (with-rows from table
+    (fn [row]
+      (sql/with-connection (make-connection to)
+        (sql/insert-records (keyword table) row)))))
 
-(defn ^{:doc "Copy from the source database to the destination one.
-              The parameters are maps containing the connection information
-              for each database."}
+(defn ^{:doc "Copy from the source database to the destination one.  The parameters are maps
+  containing the connection information for each database. These will then be changed to the
+  JDBC connection maps when required."}
   copy [from to]
-    (doseq [table (get-tables from)]
-      (println "Copying table:" table)
-      (copy-table from to table)))
+  (with-tables from
+    #(copy-table from to %)))
 
-(defn ^{:doc "To run the project just specify a configuration file with the
-              database information as detailed in config.clj-sample."}
+(defn ^{:doc "To run the project just specify a configuration file with the database information 
+  as detailed in config.clj-sample.  You can then use Leiningen like so:
+             
+    lein run /path/to/config.clj
+             
+  You will see feedback printed as tables are copied."}
   -main [config-file]
   (load-file config-file)
   (copy (:from config) (:to config)))
