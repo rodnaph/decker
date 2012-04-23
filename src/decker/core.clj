@@ -1,4 +1,3 @@
-
 (ns decker.core
   (:use [clojure.java.jdbc.internal :only [get-connection]])
   (:require [clojure.java.jdbc :as sql]))
@@ -28,6 +27,15 @@
     :subname (format "//%s:3306/%s" host name)
     :user user
     :pass pass })
+
+(defmethod ^{:doc "Creates a PostgresSQL database connection map from the information map specified"}
+  make-connection :postgres
+  [{:keys [type host user pass name]}]
+  { :classname "org.postgresql.Driver"
+    :subprotocol "postgresql"
+    :subname (format "//%s:3306/%s" host name)
+    :user user
+    :pass pass }) 
 
 ;; We also need to take into account the different ways of querying for database meta information.
 ;; So here we use another multi-method to dispatch on the connection info type to get that.
@@ -81,4 +89,3 @@
   -main [config-file]
   (load-file config-file)
   (copy (:from config) (:to config)))
-
