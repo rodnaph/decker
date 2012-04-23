@@ -42,7 +42,7 @@
 
 (defn ^{:doc "By default the clojure.java.jdbc *with-query-results* doesn't allow proper lazy evaluation because
   the underlying ResultSet will extract all the data at once.  So this method uses a cursor to fetch
-  results a page at a time, but provide a lazy sequence interface."}
+  results a page at a time, but provide a lazy sequence interface.  Taken from http://asymmetrical-view.com/2010/10/14/clojure-lazy-walk-sql-table.html"}
   with-query-results-cursor [[sql & params :as sql-params] func]
   (sql/transaction
    (with-open [stmt (.prepareStatement (sql/connection) sql)]
