@@ -3065,7 +3065,7 @@ creating a JDBC connection map from it.</p>
   is explained next.</p>
 </td><td class="codes"><pre class="brush: clojure">(def ^{:dynamic true :doc } *default-fetch-size* 50)</pre></td></tr><tr><td class="docs"><p>By default the clojure.java.jdbc <em>with-query-results</em> doesn't allow proper lazy evaluation because
   the underlying ResultSet will extract all the data at once.  So this method uses a cursor to fetch
-  results a page at a time, but provide a lazy sequence interface.</p>
+  results a page at a time, but provide a lazy sequence interface.  Taken from http://asymmetrical-view.com/2010/10/14/clojure-lazy-walk-sql-table.html</p>
 </td><td class="codes"><pre class="brush: clojure">(defn 
   with-query-results-cursor [[sql &amp; params :as sql-params] func]
   (sql/transaction
