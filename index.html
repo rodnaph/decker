@@ -3061,47 +3061,69 @@ creating a JDBC connection map from it.</p>
     :subprotocol &quot;postgresql&quot;
     :subname (format &quot;//%s:3306/%s&quot; host name)
     :user user
-    :pass pass }) </pre></td></tr><tr><td class="docs"><p>We also need to take into account the different ways of querying for database meta information.
+    :pass pass }) </pre></td></tr><tr><td class="docs"><p>This is the default page size used by <em>with-query-results-cursor</em> which
+  is explained next.</p>
+</td><td class="codes"><pre class="brush: clojure">(def ^{:dynamic true :doc } *default-fetch-size* 50)</pre></td></tr><tr><td class="docs"><p>By default the clojure.java.jdbc <em>with-query-results</em> doesn't allow proper lazy evaluation because
+  the underlying ResultSet will extract all the data at once.  So this method uses a cursor to fetch
+  results a page at a time, but provide a lazy sequence interface.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn 
+  with-query-results-cursor [[sql &amp; params :as sql-params] func]
+  (sql/transaction
+   (with-open [stmt (.prepareStatement (sql/connection) sql)]
+     (doseq [[index value] (map vector (iterate inc 1) params)]
+       (.setObject stmt index value))
+     (.setFetchSize stmt *default-fetch-size*)
+     (with-open [rset (.executeQuery stmt)]
+       (func (sql/resultset-seq rset))))))</pre></td></tr><tr><td class="docs"><p>We also need to take into account the different ways of querying for database meta information.
 So here we use another multi-method to dispatch on the connection info type to get that.</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmulti get-tables :type)</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod get-tables :mysql
-  [info]
+</td><td class="codes"></td></tr><tr><td class="docs"><p>This function allows applying a function to the name of each table
+  in the specified database.</p>
+</td><td class="codes"><pre class="brush: clojure">(defmulti 
+  with-tables :type)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod with-tables :mysql
+  [info f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      [&quot;show tables&quot;]
-      (doall (map #(second (first %)) rows)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defmethod get-tables :mssql
-  [info]
+    (with-query-results-cursor [&quot;show tables&quot;]
+      #(doseq [table %]
+         (f (second (first table)))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod with-tables :mssql
+  [info f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      [&quot;select * from INFORMATION_SCHEMA.TABLES &quot;]
-      (doall (map #(:table_name %) rows)))))</pre></td></tr><tr><td class="docs"><p>With database abstraction taken care of we can now handle the actual selection and copying
+    (with-query-results-cursor [&quot;select * from INFORMATION_SCHEMA.TABLES&quot;]
+      #(doseq [{:keys [table_name]} %] 
+        (f table_name)))))</pre></td></tr><tr><td class="docs"><p>With database abstraction taken care of we can now handle the actual selection and copying
 of data from the source to the destination.  Unfortunately the Clojure JDBC library only
 supports one connection at a time, so we need to read all the data into memory before
 re-inserting it into the destination.  That's a @todo - should really be handled with a
 lazy sequence if possible.</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Returns all the rows from a specified table.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Applies a function for each row in the specified table.  The function receives
+  each row in turn as it is fetched.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn 
-  rows-from [info table]
+  with-rows [info table f]
   (sql/with-connection (make-connection info)
-    (sql/with-query-results rows
-      [(str &quot;select * from &quot; table)]
-      (doall (map identity rows)))))</pre></td></tr><tr><td class="docs"><p>Copies the contents of a table from one database to another.
-              This assumes the destination table is empty for now.</p>
+    (with-query-results-cursor [(str &quot;select * from &quot; table)]
+      #(doseq [row %] (f row)))))</pre></td></tr><tr><td class="docs"><p>Copies the contents of a table from one database to another.  This assumes the 
+  destination table is empty for now.  The rows are copied lazily so large tables can be
+  handled - but performance could be improved.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn 
   copy-table [from to table]
-  (let [rows (rows-from from table)]
-    (sql/with-connection (make-connection to)
-      (apply (partial sql/insert-records (keyword table)) rows))))</pre></td></tr><tr><td class="docs"><p>Copy from the source database to the destination one.
-              The parameters are maps containing the connection information
-              for each database.</p>
+  (println &quot;Copying table:&quot; table)
+  (with-rows from table
+    (fn [row]
+      (sql/with-connection (make-connection to)
+        (sql/insert-records (keyword table) row)))))</pre></td></tr><tr><td class="docs"><p>Copy from the source database to the destination one.  The parameters are maps
+  containing the connection information for each database. These will then be changed to the
+  JDBC connection maps when required.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn 
   copy [from to]
-    (doseq [table (get-tables from)]
-      (println &quot;Copying table:&quot; table)
-      (copy-table from to table)))</pre></td></tr><tr><td class="docs"><p>To run the project just specify a configuration file with the
-              database information as detailed in config.clj-sample.</p>
+  (with-tables from
+    #(copy-table from to %)))</pre></td></tr><tr><td class="docs"><p>To run the project just specify a configuration file with the database information 
+  as detailed in config.clj-sample.  You can then use Leiningen like so:</p>
+
+<pre><code>lein run /path/to/config.clj
+</code></pre>
+
+<p>  You will see feedback printed as tables are copied.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn 
   -main [config-file]
   (load-file config-file)
