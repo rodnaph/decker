@@ -101,7 +101,8 @@
   JDBC connection maps when required."}
   copy [from to]
   (with-tables from
-    #(copy-table from to %)))
+    #(if (not (some #{%} (:exclude-tables from)))
+         (copy-table from to %))))
 
 (defn ^{:doc "To run the project just specify a configuration file with the database information 
   as detailed in config.clj-sample.  You can then use Leiningen like so:

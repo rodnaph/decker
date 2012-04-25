@@ -1,0 +1,21 @@
+
+(ns decker.core)
+
+(def config {
+  :from {
+    :type :mssql
+    :host "localhost"
+    :user "root"
+    :pass ""
+    :name "my_database"
+    :exclude-tables []
+  }
+  :to {
+    :type :mysql
+    :host "localhost"
+    :user "root"
+    :pass ""
+    :name "another_database"
+  }
+})
+
