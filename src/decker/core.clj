@@ -96,6 +96,11 @@
       (sql/with-connection (make-connection to)
         (sql/insert-records (keyword table) row)))))
 
+(defn ^{:doc "Copies all data from the specified tables from one database to the other."}
+  copy-tables [from to tables]
+  (doseq [table tables]
+    (copy-table from to table)))
+
 (defn ^{:doc "Copy from the source database to the destination one.  The parameters are maps
   containing the connection information for each database. These will then be changed to the
   JDBC connection maps when required."}
