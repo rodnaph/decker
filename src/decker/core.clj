@@ -15,12 +15,12 @@
   [{:keys [type host user pass name]}]
   { :classname "com.microsoft.sqlserver.jsbc.SQLServerDriver"
     :subprotocol "sqlserver"
-    :subname (format "//%s:1433;databaseName=%s" host name) 
+    :subname (format "//%s:1433;databaseName=%s" host name)
     :user user
     :password pass })
 
 (defmethod ^{:doc "Creates a MySQL database connection map from the information map specified."}
-  make-connection :mysql 
+  make-connection :mysql
   [{:keys [type host user pass name]}]
   { :classname "com.mysql.jdbc.Driver"
     :subprotocol "mysql"
@@ -35,7 +35,7 @@
     :subprotocol "postgresql"
     :subname (format "//%s:3306/%s" host name)
     :user user
-    :pass pass }) 
+    :pass pass })
 
 (def ^{:dynamic true :doc "This is the default page size used by *with-query-results-cursor* which
   is explained next."} *default-fetch-size* 50)
@@ -70,7 +70,7 @@
   [info f]
   (sql/with-connection (make-connection info)
     (with-query-results-cursor ["select * from INFORMATION_SCHEMA.TABLES"]
-      #(doseq [{:keys [table_name]} %] 
+      #(doseq [{:keys [table_name]} %]
         (f table_name)))))
 
 ;; With database abstraction taken care of we can now handle the actual selection and copying
@@ -86,7 +86,7 @@
     (with-query-results-cursor [(str "select * from " table)]
       #(doseq [row %] (f row)))))
 
-(defn ^{:doc "Copies the contents of a table from one database to another.  This assumes the 
+(defn ^{:doc "Copies the contents of a table from one database to another.  This assumes the
   destination table is empty for now.  The rows are copied lazily so large tables can be
   handled - but performance could be improved."}
   copy-table [from to table]
@@ -109,11 +109,11 @@
     #(if (not (some #{%} (:exclude-tables from)))
          (copy-table from to %))))
 
-(defn ^{:doc "To run the project just specify a configuration file with the database information 
+(defn ^{:doc "To run the project just specify a configuration file with the database information
   as detailed in config.clj-sample.  You can then use Leiningen like so:
-             
+
     lein run /path/to/config.clj
-             
+
   You will see feedback printed as tables are copied."}
   -main [config-file]
   (load-file config-file)
