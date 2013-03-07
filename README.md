@@ -22,6 +22,13 @@ can include it like this:
 ```clojure
 (:require [decker.core :as decker])
 
+; Copy all tables in a database
+(decker/copy from to)
+
+; Copy only the specified tables
+(decker/copy-tables from to ["tbl1" "tbl2"])
+
+; Copy a specific table
 (decker/copy-table from to "table")
 ```
 
