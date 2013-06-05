@@ -16,8 +16,8 @@ lein run ../path/to/config.clj
 
 ## Using as Library
 
-To use Decker as a library just add it to your Leiningen project file, the you
-can include it like this:
+To use Decker as a library just grab it [from Clojars](https://clojars.org/rodnaph/decker)
+and add it to your Leiningen project file, the you can include it like this:
 
 ```clojure
 (:require [decker.core :as decker])
