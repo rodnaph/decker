@@ -26,7 +26,7 @@
     :subprotocol "mysql"
     :subname (format "//%s:3306/%s" host name)
     :user user
-    :pass pass })
+    :password pass })
 
 (defmethod ^{:doc "Creates a PostgresSQL database connection map from the information map specified"}
   make-connection :postgres
@@ -35,7 +35,7 @@
     :subprotocol "postgresql"
     :subname (format "//%s:3306/%s" host name)
     :user user
-    :pass pass })
+    :password pass })
 
 (def ^{:dynamic true :doc "This is the default page size used by *with-query-results-cursor* which
   is explained next."} *default-fetch-size* 50)
