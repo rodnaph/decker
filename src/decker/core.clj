@@ -24,9 +24,9 @@
   [{:keys [type host user pass name]}]
   { :classname "com.mysql.jdbc.Driver"
     :subprotocol "mysql"
-    :subname (format "//%s:3306/%s" host name)
-    :user user
-    :password pass })
+    :subname (format "//%s:3306/%s" (or host "localhost") name)
+    :user (or user "root")
+    :password (or pass "") })
 
 (defmethod ^{:doc "Creates a PostgresSQL database connection map from the information map specified"}
   make-connection :postgres
