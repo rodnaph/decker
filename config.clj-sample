@@ -8,6 +8,7 @@
     :user "root"
     :pass ""
     :name "my_database"
+    :include-tables :all
     :exclude-tables []
   }
   :to {

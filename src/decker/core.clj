@@ -4,6 +4,11 @@
 
 (def ^{:dynamic true} config)
 
+;; Some utilities.
+
+(defn- in? [col e]
+  (some #{e} col))
+
 ;; This multi-method handles taking a map of connection information and
 ;; creating a JDBC connection map from it.
 
@@ -104,9 +109,12 @@
 (defn ^{:doc "Copy from the source database to the destination one.  The parameters are maps
   containing the connection information for each database. These will then be changed to the
   JDBC connection maps when required."}
-  copy [from to]
+  copy [{:keys [include-tables exclude-tables] :as from} to]
   (with-tables from
-    #(if (not (some #{%} (:exclude-tables from)))
+    #(if (and (or (= :all include-tables)
+                  (nil? include-tables)
+                  (in? include-tables %))
+              (not (in? exclude-tables %)))
          (copy-table from to %))))
 
 (defn ^{:doc "To run the project just specify a configuration file with the database information
